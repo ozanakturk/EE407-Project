@@ -2,8 +2,9 @@
 #define BUTTON_1 8
 #define BUTTON_2 9
 #define SENSOR_PIN A0
-
 #define CURRENT_LIMIT 15
+
+#include <ACS712.h>
 
 int b;
 int curDuty; // A variable that holds the current duty cycle (hold a value in the range of 0-255 for analogWrite)
@@ -14,7 +15,7 @@ double RefAmp; // Reference for control
 
 void soft_start(){ // It increases the duty cycle each seconds by a small amount up to 60
   int ss_duty = 0; // A variable holding the soft start duty cycle (0-255)
-  while(cnt < 60){ // The code below runs while the duty cycle is under 60
+  while(ss_duty < 60){ // The code below runs while the duty cycle is under 60
     delay(1000);
     ss_duty = ss_duty + 3; // Slightly increase the duty cycle at each loop
     ss_duty = constrain(ss_duty, 0, 61);  // Limit the duty cycle to be under %25
@@ -24,12 +25,24 @@ void soft_start(){ // It increases the duty cycle each seconds by a small amount
   }
 }
 
+void setup() {
+  pinMode(PWM_PIN, OUTPUT);  //PWM pin
+  pinMode(BUTTON_1, INPUT);   //BUTON 1
+  pinMode(BUTTON_2, INPUT);   //BUTON 2
+  Serial.begin(9600);
+
+  soft_start();  
+}
+
 void current_rms_read(){ // Measures the current and calculates its rms value
   SensorVout = analogRead(SENSOR_PIN); // The sensor output is read (0-1023)
   AmpThrough = abs((((SensorVout / 1023.0) * 5000) - 2500) / mVperAmp) - 0.05; // The calculation for the current is done according to the datasheet of ACS712
 }
 
-void ON_OFF_control(){
+void loop() {
+  current_rms_read();
+
+  // ON_OFF_control
   current_rms_read();
 
   if (digitalRead(BUTTON_1) == 1)  // Button 1 is pressed
@@ -92,18 +105,4 @@ void ON_OFF_control(){
     analogWrite(PWM_PIN, 0);  // Resets the duty cycle to zero
     delay(10000); // Wait for 10 seconds
     soft_start(); // Soft start again
-}
-
-void setup() {
-  pinMode(PWM_PIN, OUTPUT);  //PWM pin
-  pinMode(BUTTON_1, INPUT);   //BUTON 1
-  pinMode(BUTTON_2, INPUT);   //BUTON 2
-  Serial.begin(9600);
-
-  soft_start();  
-}
-
-void loop() {
-  current_rms_read();
-  ON_OFF_control();
 }
