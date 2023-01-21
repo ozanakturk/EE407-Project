@@ -8,7 +8,7 @@
 
 ACS712 sensor(ACS712_30A, SENSOR_PIN); // Sensor decleration
 
-int a = 0;
+int a = 0; // A dummy variable declared for the soft start to happen
 int curDuty = 0; // A variable that holds the current duty cycle (hold a value in the range of 0-255 for analogWrite)
 double AmpThrough = 0.0; // The current passing through the motor
 double RefAmp = 0.0; // Reference for control
@@ -77,13 +77,14 @@ void pi_control(){
   error = RefAmp - AmpThrough; // Error is the difference between the reference and output current
   integral = integral + error*dt; // The definition of the intergral term
   curDuty = Kp*error + Ki*integral; // PI control
-  curDuty = constrain(curDuty,0,1023);
+  curDuty = constrain(curDuty, 1, 191);
   analogWrite(PWM_PIN, curDuty);
   print_variables();
   
   EndTime = micros();
   dt = (EndTime - StartTime)/1000000.00; // Find the step time
 }
+
 void print_variables(){
   Serial.print(RefAmp); // Print RefAmp
   Serial.print('\t');
