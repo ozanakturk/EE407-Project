@@ -9,9 +9,10 @@
 ACS712 sensor(ACS712_30A, SENSOR_PIN); // Sensor decleration
 
 int a = 0; // A dummy variable declared for the soft start to happen
+float b = 0.0;
 int curDuty = 0; // A variable that holds the current duty cycle (hold a value in the range of 0-255 for analogWrite)
 double AmpThrough = 0.0; // The current passing through the motor
-double RefAmp = 0.0; // Reference for control
+double RefAmp = 0.1; // Reference for control
 
 // variables for PI control
 unsigned long StartTime;
@@ -20,8 +21,8 @@ float dt = 0.01;
 double error = 0;
 double integral = 0; 
 int output = 0;
-#define Kp 1  // Proportional gain
-#define Ki 0.1  // Integral gain
+#define Kp 22  // Proportional gain
+#define Ki 2  // Integral gain
 
 void soft_start(){ // It increases the duty cycle each seconds by a small amount up to 60
   int ss_duty = 0; // A variable holding the soft start duty cycle (0-255)
@@ -37,9 +38,9 @@ void soft_start(){ // It increases the duty cycle each seconds by a small amount
 }
 
 void on_off_control(){
-  AmpThrough = sensor.getCurrentAC(980); // Read the rms value of the current
+  AmpThrough = sensor.getCurrentAC(980) - 0.1; // Read the rms value of the current
 
-  if (RefAmp == 1.5 && AmpThrough < CURRENT_LIMIT)  // 
+  if (RefAmp == 1.70 && AmpThrough < CURRENT_LIMIT)  // 
   {
     if (AmpThrough > (RefAmp + 0.08)){
       curDuty = constrain(curDuty - 2, 1, 191);  // Max %75 duty
@@ -51,7 +52,7 @@ void on_off_control(){
     print_variables();
     delay(400);
   } 
-  else if (RefAmp == 1 && AmpThrough < CURRENT_LIMIT)  // 1 A
+  else if (RefAmp == 1.30 && AmpThrough < CURRENT_LIMIT)  // 1 A
   {
     if (AmpThrough > (RefAmp + 0.05)){
       curDuty = constrain(curDuty - 2, 1, 191);  // Max %75 duty
@@ -73,16 +74,26 @@ void on_off_control(){
 void pi_control(){
   StartTime = micros();
   
-  AmpThrough = sensor.getCurrentAC(980); // Read the rms value of the current
+  AmpThrough = sensor.getCurrentAC(980) - 0.1; // Read the rms value of the current
+  if (AmpThrough > CURRENT_LIMIT) {
+    analogWrite(PWM_PIN, 0);  // Resets the duty cycle to zero
+    delay(50000); // Wait for 10 seconds
+    soft_start(); // Soft start again
+  }
+  
   error = RefAmp - AmpThrough; // Error is the difference between the reference and output current
-  integral = integral + error*dt; // The definition of the intergral term
-  curDuty = Kp*error + Ki*integral; // PI control
-  curDuty = constrain(curDuty, 1, 191);
+  integral = integral + error*dt; // The definition of the integral term
+  b = 60+Kp*error + Ki*integral; // PI control
+  b = constrain(b, 1, 191);
+  curDuty = int(round(b));
+
+  delay(50);
   analogWrite(PWM_PIN, curDuty);
   print_variables();
   
   EndTime = micros();
-  dt = (EndTime - StartTime)/1000000.00; // Find the step time
+  dt = abs(EndTime - StartTime)/1000000.00; // Find the step time
+  
 }
 
 void print_variables(){
@@ -109,18 +120,20 @@ void loop() {
   if (a<60){
     delay(20000);
     soft_start();
+    print_variables();
+    AmpThrough = sensor.getCurrentAC(980) - 0.1; // Read the rms value of the current
+    RefAmp = AmpThrough;
   }
   else{
     if (digitalRead(BUTTON_1) == 1){  // Button 1 is pressed
-      RefAmp = 1.5;
+      RefAmp = 1.70;
     }
     if (digitalRead(BUTTON_2) == 1){  // Button 2 is pressed
-      RefAmp = 1;
+      RefAmp = 1.30;
     }
-
     /* Comment out the control method that you don't want to use */
     
-    //on_off_control();
-    pi_control();
+    on_off_control();
+    //pi_control();
   }
 }
