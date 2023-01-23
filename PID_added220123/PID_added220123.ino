@@ -21,7 +21,7 @@ float dt = 0.01;
 double error = 0;
 double integral = 0; 
 int output = 0;
-#define Kp 22  // Proportional gain
+#define Kp 30  // Proportional gain
 #define Ki 2  // Integral gain
 
 void soft_start(){ // It increases the duty cycle each seconds by a small amount up to 60
@@ -133,7 +133,7 @@ void loop() {
     }
     /* Comment out the control method that you don't want to use */
     
-    on_off_control();
-    //pi_control();
+    //on_off_control();
+    pi_control();
   }
 }
